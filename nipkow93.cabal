@@ -22,3 +22,4 @@ executable nipkow93
     hs-source-dirs: src
     other-modules:
         Syntax
+        Unif
