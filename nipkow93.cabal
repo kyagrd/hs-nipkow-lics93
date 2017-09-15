@@ -1,20 +1,24 @@
-name:                nipkow93
-version:             0.1.0.0
--- synopsis:
--- description:
-homepage:            https://github.com/githubuser/nipkow93#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2017 Author name here
-category:            Web
-build-type:          Simple
-cabal-version:       >=1.10
-extra-source-files:  README.md
+name: nipkow93
+version: 0.1.0.0
+cabal-version: >=1.10
+build-type: Simple
+license: BSD3
+license-file: LICENSE
+copyright: 2017 Ki Yung Ahn
+maintainer: example@example.com
+homepage: https://github.com/kyagrd/hs-nipkow-lics93#readme
+category: Web
+author: Ki Yung Ahn
+extra-source-files:
+    README.md
 
 executable nipkow93
-  hs-source-dirs:      src
-  main-is:             Main.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
+    main-is: Main.hs
+    build-depends:
+        base >=4.7 && <5,
+        containers -any,
+        unbound -any
+    default-language: Haskell2010
+    hs-source-dirs: src
+    other-modules:
+        Syntax
