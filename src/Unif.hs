@@ -11,8 +11,8 @@ module Unif where
 import           Control.Applicative
 import           Data.Char               (isUpper)
 import           Data.List               hiding (insert, map, null)
-import           Data.Map.Strict         hiding (foldr, insert, map, mapMaybe,
-                                          null)
+import           Data.Map.Strict         hiding (foldl, foldr, insert, map,
+                                          mapMaybe, null)
 import qualified Data.Map.Strict         as M
 import           Data.Maybe
 import           Syntax
@@ -40,12 +40,11 @@ ustep ((t1, Lam b):es, s)      = do (x,t) <- unbind b
 ustep ((Lam b, t2):es, s)      = do (x,t) <- unbind b
                                     pure ((t, App t2 (Var x)):es, s)
 -- the real unification work
-ustep ((t1, t2):es, s) -- require caller of ustep to invoke devar on t1 and t2
-  -- rigidrigid
-  | rigid x1 && rigid x2 && x1==x2 && len1==len2
-                             = pure (zip ts1 ts2++es, s)
+ustep ((t1, t2):es, s) -- caller of ustep to invokes devar; see definition of u
+  | rigid x1 && rigid x2 && x1==x2 && len1==len2 = pure (zip ts1 ts2++es, s)
   | rigid x1 && rigid x2     = fail $ show (t1, t2) ++ " cannot unify because "
                                     ++ show x1 ++ " /= " ++ show x2
+   -- TODO occurs may need to be implemented using expand thus a monadic operation
   | rigid x1 && occurs x2 t1 = fail $ show (t1, t2) ++ " cannot unify because "
                                     ++ show x2 ++ " occurs in " ++ show t1
   | rigid x2 && occurs x1 t2 = fail $ show (t1, t2) ++ " cannot unify because "
@@ -74,20 +73,33 @@ ustep ((t1, t2):es, s) -- require caller of ustep to invoke devar on t1 and t2
      zs = [x1 | x1 <- vs1, x2 <- vs2, x1==x2]
 
 proj :: Fresh m => [Nm] -> Map Nm Tm -> Tm -> m (Map Nm Tm)
-proj vs s t = undefined -- TODO
+proj vs s t = -- TODO no syntax for constants yet
+  case unfoldApp t of
+    [Lam b] -> do (x,tb) <- unbind b
+                  proj (x:vs) s =<< devar s tb
+    [_]     -> error "non-reachable pattern"
+    Var x : ts
+     | rigid x && x `elem` vs -> foldl (proj vs) s ts
+     | rigid x   -> fail $ "unbound rigid variable "++ show x
+     | otherwise -> do h <- Var <$> fresh (s2n "h")
+                       let ys = map (\(Var v) -> v) ts
+                           zs = [v | v<-vs, y<-ys, v==y]
+                       pure $ M.insert x (lamMany ys $ appMany h (Var<$>zs)) s
 
 appMany t ts = foldl1 App (t:ts)
 
 lamMany = foldr ((.) . lam) id
 
 devar :: Fresh m => Map Nm Tm -> Tm -> m Tm
-devar s t = do t' <- expand s t
-               if rigid x || t == t' then pure t else redapps t' ts
-  where
-    Var x : ts = unfoldApp t
+devar s t = case t1 of  Var x | not (rigid x)
+                              -> do t' <- expand s t1
+                                    if t' == t1 then pure t
+                                                else devar s =<< redapps t' ts
+                        _     -> pure t
+  where t1 : ts = unfoldApp t
 
-redapps (Lam b) (t:ts) = do (x,t1) <- unbind b
-                            redapps (subst x t t1) ts
+redapps (Lam b) (t:ts) = do (x,tb) <- unbind b
+                            redapps (subst x t tb) ts
 redapps t       ts     = return $ appMany t ts
 
 {-
