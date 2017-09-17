@@ -2,14 +2,11 @@
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
--- {-# LANGUAGE ScopedTypeVariables       #-}
--- {-# LANGUAGE StandaloneDeriving        #-}
--- {-# LANGUAGE TemplateHaskell           #-}
--- {-# LANGUAGE UndecidableInstances      #-}
 
 module Unif where
 import           Control.Applicative
 import           Data.Char               (isUpper)
+import           Data.Foldable           (foldlM)
 import           Data.List               hiding (insert, map, null)
 import           Data.Map.Strict         hiding (foldl, foldr, insert, map,
                                           mapMaybe, null)
@@ -51,12 +48,12 @@ ustep ((t1, t2):es, s) -- caller of ustep to invokes devar; see definition of u
                                     ++ show x1 ++ " occurs in " ++ show t2
   | rigid x1  = (,) es <$> (proj vs2 s =<< devar s t1) -- rigidflex
   | rigid x2  = (,) es <$> (proj vs1 s =<< devar s t2) -- flexrigid
-  | x1==x2 && len1 == len2   =
-                do h <- Var <$> fresh (s2n "H") -- flexflex1
+  | x1==x2 && len1 == len2
+              = do h <- Var <$> fresh (s2n "H") -- flexflex1
                    let s' = M.insert x1 (lamMany vs1 $ appMany h (Var<$>xs)) s
                    pure (es, s')
-  | x1==x2                   = fail $ show (t1, t2) ++ " cannot unify because "
-                                    ++ "they have different number of args"
+  | x1==x2    = fail $ show (t1, t2) ++ " cannot unify because "
+                     ++ "they have different number of args"
   | otherwise = do h <- Var <$> fresh (s2n "H") -- flexflex2
                    let f1 = lamMany vs1 $ appMany h (Var<$>zs)
                        f2 = lamMany vs2 $ appMany h (Var<$>zs)
@@ -79,7 +76,7 @@ proj vs s t = -- TODO no syntax for constants yet
                   proj (x:vs) s =<< devar s tb
     [_]     -> error "non-reachable pattern"
     Var x : ts
-     | rigid x && x `elem` vs -> foldl (proj vs) s ts
+     | rigid x && x `elem` vs -> foldlM (proj vs) s ts
      | rigid x   -> fail $ "unbound rigid variable "++ show x
      | otherwise -> do h <- Var <$> fresh (s2n "h")
                        let ys = map (\(Var v) -> v) ts
