@@ -50,15 +50,12 @@ ustep ((t1, t2):es, s) -- caller of ustep to invokes devar; see definition of u
   | rigid x2  = (,) es <$> (proj vs1 s =<< devar s t2) -- flexrigid
   | x1==x2 && len1 == len2
               = do h <- Var <$> fresh (s2n "H") -- flexflex1
-                   let s' = M.insert x1 (lamMany vs1 $ appMany h (Var<$>xs)) s
-                   pure (es, s')
+                   pure (es, M.insert x1 (hnf vs1 h xs) s)
   | x1==x2    = fail $ show (t1, t2) ++ " cannot unify because "
                      ++ "they have different number of args"
   | otherwise = do h <- Var <$> fresh (s2n "H") -- flexflex2
-                   let f1 = lamMany vs1 $ appMany h (Var<$>zs)
-                       f2 = lamMany vs2 $ appMany h (Var<$>zs)
-                   let s' = M.insert x1 f1 . M.insert x2 f2 $ s
-                   pure (es, s')
+                   pure (es, M.insert x1 (hnf vs1 h zs) .
+                             M.insert x2 (hnf vs2 h zs) $ s)
   where
      Var x1 : ts1 = unfoldApp t1
      Var x2 : ts2 = unfoldApp t2
@@ -81,7 +78,9 @@ proj vs s t = -- TODO no syntax for constants yet
      | otherwise -> do h <- Var <$> fresh (s2n "h")
                        let ys = map (\(Var v) -> v) ts
                            zs = [v | v<-vs, y<-ys, v==y]
-                       pure $ M.insert x (lamMany ys $ appMany h (Var<$>zs)) s
+                       pure $ M.insert x (hnf ys h zs) s
+
+hnf vs h zs = lamMany vs $ appMany h (Var<$>zs)
 
 appMany t ts = foldl1 App (t:ts)
 
