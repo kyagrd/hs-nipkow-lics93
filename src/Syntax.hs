@@ -28,6 +28,10 @@ $(derive [''Tm])
 
 instance Alpha Tm
 
+-- A bit clumsy quick and dirty istance using one kind of name
+-- assuming that namespaces of logic and bound variables are disjoint,
+-- for instance, let identifiers of logic variables start with upper letters
+-- and identifiers of bound variables start with lower letters.
 instance Subst Tm Tm where
   isvar (V x) = Just (SubstName x) -- for logic variable substitution
   isvar (B x) = Just (SubstName x) -- for reduction, alpha conviersion

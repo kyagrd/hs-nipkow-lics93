@@ -45,9 +45,12 @@ infixr .+
 
 u :: Fresh m => ([(Tm, Tm)], Map Nm Tm) -> m (Map Nm Tm)
 u ([], s) = return s
-u ((t1,t2):es, s) = do t1' <- devar s t1
-                       t2' <- devar s t2
-                       u =<< ustep ((t1',t2'):es, s)
+u ess     = u =<< ustep' ess
+
+ustep' ess@([], _) = return ess
+ustep' ((t1,t2):es, s) = do t1' <- devar s t1
+                            t2' <- devar s t2
+                            ustep ((t1',t2'):es, s)
 
 ustep :: Fresh m => ([(Tm,Tm)], Map Nm Tm) -> m ([(Tm,Tm)], Map Nm Tm)
 ustep p@([], s) = return p

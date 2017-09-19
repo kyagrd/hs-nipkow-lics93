@@ -14,6 +14,9 @@ c = s2n "c"
 
 idTm = lam x (B x)
 
+-- Note: you should keep logic variables and bound variables disjoint
+-- so that logic variables are not accidently captured by Bind
+
 t1 = lam x $ app (B y) (app (V$s2n"F") (B x))
 t2 = lam x $ app (B y) (app (C c) (appMany (V$s2n"G") [B y,B x]))
 
