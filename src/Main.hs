@@ -12,10 +12,10 @@ z = s2n "z"
 w = s2n "w"
 c = s2n "c"
 
-idTm = lam x (var x)
+idTm = lam x (B x)
 
-t1 = lam x $ app (var y) (app (var $ s2n "F") (var x))
-t2 = lam x $ app (var y) (app (con c) (appMany (var $ s2n "G") [var y,var x]))
+t1 = lam x $ app (B y) (app (V$s2n"F") (B x))
+t2 = lam x $ app (B y) (app (C c) (appMany (V$s2n"G") [B y,B x]))
 
 main :: IO ()
 main = do
