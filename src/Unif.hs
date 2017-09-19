@@ -82,7 +82,7 @@ ustep ((t1, t2):es, s) =
     -- rigidrigid
     _ | xF==xG && len1==len2 -> pure (zip ts1 ts2++es, s)
       | xF/=xG               -> cantUnify $ show xF++" /= "++show xG
-      | otherwise            -> cantUnify "their argumnets differ"
+      | otherwise            -> cantUnify "their arguments differ"
   where
      tF : ts1 = unfoldApp t1; xF = nm2tm tF; bs1 = unB<$>ts1; len1 = length ts1
      tG : ts2 = unfoldApp t2; xG = nm2tm tG; bs2 = unB<$>ts2; len2 = length ts2
