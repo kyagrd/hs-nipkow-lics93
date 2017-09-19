@@ -55,8 +55,9 @@ ustep ((Lam b, t2):es, s)      = do (x,t) <- unbind b
 -- the real unification work
 ustep ((t1, t2):es, s) =
   case (tF, tG) of
-    -- flexflex1
+    -- flexflex
     (V _, V _)
+      -- flexflex1
       | xF==xG && len1/=len2 -> cantUnify "their arguments differ"
       | xF==xG && ts1 == ts2 -> pure (es, s)
       | xF==xG      -> do h <- V <$> fresh (s2n "H")
