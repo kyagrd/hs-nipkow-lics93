@@ -43,7 +43,6 @@ u ((t1,t2):es, s) = do t1' <- devar s t1
                        t2' <- devar s t2
                        u =<< ustep ((t1',t2'):es, s)
 
--- assuming all the terms are higher-order patterns
 ustep :: Fresh m => ([(Tm,Tm)], Map Nm Tm) -> m ([(Tm,Tm)], Map Nm Tm)
 ustep p@([], s) = return p
 -- on the fly eta-expansion
