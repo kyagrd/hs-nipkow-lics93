@@ -39,6 +39,10 @@ app = App
 occurs :: Alpha t => Nm -> t -> Bool
 occurs x t = x `elem` (fv t :: [Nm])
 
+---------------------------------------------------------------------------
+-- below are not used in the HOpattern-unif algorithm; just some utility
+---------------------------------------------------------------------------
+
 stepBN :: Fresh f => Tm -> f Tm
 stepBN v@(V _)           = pure v
 stepBN v@(B _)           = pure v
