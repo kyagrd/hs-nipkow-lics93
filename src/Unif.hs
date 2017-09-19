@@ -35,7 +35,13 @@ expand' s (App t1 t2) = do { t1' <- expand' s t1; t2' <- expand' s t2; redapps t
 expand' s (Lam b) = do { (x,t) <- unbind b; lam x <$> expand' s t }
 
 infixr .+
-(x,t) .+ s = M.insert x t s
+(.+) :: Fresh m => (Nm,Tm) -> m ([(Tm,Tm)],Map Nm Tm) -> m ([(Tm,Tm)],Map Nm Tm)
+(x,t) .+ mess = do (es,s) <- mess
+                   t' <- expand' s t
+                   let s' = M.insert x t' (subst x t' <$> s)
+                   let es' | M.member x s = (s!x,t'):es
+                           | otherwise    = es
+                   return (es', s')
 
 u :: Fresh m => ([(Tm, Tm)], Map Nm Tm) -> m (Map Nm Tm)
 u ([], s) = return s
@@ -60,27 +66,27 @@ ustep ((t1, t2):es, s) =
       -- flexflex1
       | xF==xG && len1/=len2 -> cantUnify "their arguments differ"
       | xF==xG && ts1 == ts2 -> pure (es, s)
-      | xF==xG      -> do h <- V <$> fresh (s2n "H")
-                          pure (es, (xF, hnf bs1 h xs).+s)
+      | xF==xG -> do h <- V <$> fresh (s2n "H")
+                     (xF, hnf bs1 h xs) .+ pure(es, s)
       -- flexflex2
-      | subset bs1 bs2 -> pure (es, (xG, hnf bs2 tF ts1).+s)
-      | subset bs2 bs1 -> pure (es, (xF, hnf bs1 tG ts2).+s)
-      | otherwise   -> do h <- V <$> fresh (s2n "H")
-                          pure (es, (xF, hnf bs1 h zs).+(xG, hnf bs2 h zs).+s)
+      | subset bs1 bs2 -> (xG, hnf bs2 tF ts1) .+ pure(es, s)
+      | subset bs2 bs1 -> (xF, hnf bs1 tG ts2) .+ pure(es, s)
+      | otherwise -> do h <- V <$> fresh (s2n "H")
+                        (xF, hnf bs1 h zs) .+ (xG, hnf bs2 h zs) .+ pure(es, s)
     -- flexrigid
     (V _, _) -> trace ("flexrigid "++show((t1,t2):es)) $
                 do xF't2 <- occ s xF t2
                    when xF't2 . cantUnify $ show xF++" occurs in "++show t2
-                   let s' = (xF, lamMany bs1 t2) .+ s
-                   (,) es <$> (proj bs1 s' =<< devar s' t2)
+                   (es',s') <- (xF, lamMany bs1 t2) .+ pure(es, s)
+                   proj' bs1 (es',s') t2
     -- rigidflex
     (_, V _) -> trace ("rigidflex "++show((t1,t2):es)) $
                 do xG't1 <- occ s xG t1
                    when xG't1 . cantUnify $ show xG++" occurs in "++show t1
-                   let s' = (xG, lamMany bs2 t1) .+ s
-                   (,) es <$> (proj bs2 s' =<< devar s' t1)
+                   (es',s') <- (xG, lamMany bs2 t1) .+ pure(es, s)
+                   proj' bs2 (es',s') t1
     -- rigidrigid
-    _ | xF==xG && len1==len2 -> pure (zip ts1 ts2++es, s)
+    _ | xF==xG && len1==len2 -> pure (zip ts1 ts2 ++ es, s)
       | xF/=xG               -> cantUnify $ show xF++" /= "++show xG
       | otherwise            -> cantUnify "their arguments differ"
   where
@@ -97,20 +103,23 @@ unB t     = error $ show t ++ " is not a bound variable"
 
 occ s x t = occurs x <$> expand s t
 
-proj :: Fresh m => [Nm] -> Map Nm Tm -> Tm -> m (Map Nm Tm)
-proj vs s t =
-  trace ("\nproj ("++show vs++") ("++show s++") ("++show t++")\n***\n") $
+proj :: Fresh m => [Nm] -> ([(Tm,Tm)],Map Nm Tm) -> Tm -> m ([(Tm,Tm)],Map Nm Tm)
+proj vs ess t =
+  trace ("\nproj ("++show vs++") ("++show ess++") ("++show t++")\n***\n") $
   case unfoldApp t of
-    [Lam b]         -> do { (x,tb) <- unbind b; proj (x:vs) s =<< devar s tb }
+    [Lam b]         -> do { (x,tb) <- unbind b; proj' (x:vs) ess tb }
     [_]             -> error "non-reachable pattern"
-    C x : ts        -> foldlM (\s t -> proj vs s =<< devar s t) s ts
+    C x : ts        -> foldlM (proj' vs) ess ts
     B x : ts
-      | x `elem` vs -> foldlM (\s t -> proj vs s =<< devar s t) s ts
+      | x `elem` vs -> foldlM (proj' vs) ess ts
       | otherwise   ->  fail $ "unbound rigid variable "++ show x
     V x : ts        -> do h <- V <$> fresh (s2n "H")
                           let ys = unB <$> ts
                               zs = [B y | y<-ys, y `elem` vs]
-                          pure $ (x, hnf ys h zs) .+ s
+                          (x, hnf ys h zs) .+ pure ess
+
+-- helper function wrapping proj with devar
+proj' vs ess@(es,s) t = proj vs ess =<< devar s t
 
 hnf vs h zs = lamMany vs $ appMany h zs
 
