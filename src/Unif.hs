@@ -56,12 +56,12 @@ ustep ((Lam b, t2):es, s)      = do (x,t) <- unbind b
 -- the real unification work
 ustep ((t1, t2):es, s) =
   case (tF, tG) of
-    (V _, V _) -- flexflex
-      -- flexflex1
+    -- flexflex1
+    (V _, V _)
       | xF==xG && len1/=len2 -> cantUnify "their arguments differ"
       | xF==xG && ts1 == ts2 -> pure (es, s)
       | xF==xG      -> do h <- V <$> fresh (s2n "H")
-                          pure (es, (xF, hnf bs1 h xs) .+s)
+                          pure (es, (xF, hnf bs1 h xs).+s)
       -- flexflex2
       | subset bs1 bs2 -> pure (es, (xG, hnf bs2 tF ts1).+s)
       | subset bs2 bs1 -> pure (es, (xF, hnf bs1 tG ts2).+s)
@@ -69,13 +69,13 @@ ustep ((t1, t2):es, s) =
                           pure (es, (xF, hnf bs1 h zs).+(xG, hnf bs2 h zs).+s)
     -- flexrigid
     (V _, _) -> trace ("flexrigid "++show((t1,t2):es)) $
-                do xF't2 <- occ s xF t2 -- flexrigid
+                do xF't2 <- occ s xF t2
                    when xF't2 . cantUnify $ show xF++" occurs in "++show t2
                    let s' = (xF, lamMany bs1 t2) .+ s
                    (,) es <$> (proj bs1 s' =<< devar s' t2)
     -- rigidflex
     (_, V _) -> trace ("rigidflex "++show((t1,t2):es)) $
-                do xG't1 <- occ s xG t1 -- rigidflex
+                do xG't1 <- occ s xG t1
                    when xG't1 . cantUnify $ show xG++" occurs in "++show t1
                    let s' = (xG, lamMany bs2 t1) .+ s
                    (,) es <$> (proj bs2 s' =<< devar s' t1)
