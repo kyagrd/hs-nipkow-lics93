@@ -108,15 +108,16 @@ proj vs ess t =
   trace ("\nproj ("++show vs++") ("++show ess++") ("++show t++")\n***\n") $
   case unfoldApp t of
     [Lam b]         -> do { (x,tb) <- unbind b; proj' (x:vs) ess tb }
-    [_]             -> error "non-reachable pattern"
     C x : ts        -> foldlM (proj' vs) ess ts
     B x : ts
       | x `elem` vs -> foldlM (proj' vs) ess ts
-      | otherwise   ->  fail $ "unbound rigid variable "++ show x
+      | otherwise   -> fail $ "unbound rigid variable "++ show x
     V x : ts        -> do h <- V <$> fresh (s2n "H")
                           let ys = unB <$> ts
                               zs = [B y | y<-ys, y `elem` vs]
                           (x, hnf ys h zs) .+ pure ess
+    _ -> error $ "non-reachable pattern: t = "++show t
+                         ++" ; unfoldApp t = "++show(unfoldApp t)
 
 -- helper function wrapping proj with devar
 proj' vs ess@(es,s) t = proj vs ess =<< devar s t
