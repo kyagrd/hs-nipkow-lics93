@@ -97,7 +97,7 @@ ustep ((t1, t2):es, s) =
      tG : ts2 = unfoldApp t2; xG = nm2tm tG; bs2 = unB<$>ts2; len2 = length ts2
      xs = [x1 | (x1,x2)<-zip ts1 ts2, x1==x2]
      zs = [x1 | x1 <- ts1, x2 <- ts2, x1==x2]
-     subset xs ys = all (`elem` ys) xs
+
      cantUnify whymsg = fail $ "cannot unify " ++ show (t1,t2)
                             ++ " because " ++ whymsg
 
@@ -105,6 +105,8 @@ unB (B x) = x
 unB t     = error $ show t ++ " is not a bound variable"
 
 occ s x t = occurs x <$> expand s t
+
+subset xs ys = all (`elem` ys) xs
 
 proj :: Fresh m => [Nm] -> ([(Tm,Tm)],Map Nm Tm) -> Tm -> m ([(Tm,Tm)],Map Nm Tm)
 proj vs ess t =
@@ -115,10 +117,11 @@ proj vs ess t =
     B x : ts
       | x `elem` vs -> foldlM (proj' vs) ess ts
       | otherwise   -> fail $ "unbound rigid variable "++ show x
-    V x : ts        -> do h <- V <$> fresh (s2n "H")
-                          let ys = unB <$> ts
-                              zs = [B y | y<-ys, y `elem` vs]
-                          (x, hnf ys h zs) .+ pure ess
+    V x : ts        -> let ys = unB <$> ts
+                           zs = [B y | y<-ys, y `elem` vs]
+                       in if subset ys vs then pure ess
+                                          else do h <- V <$> fresh (s2n "H")
+                                                  (x, hnf ys h zs) .+ pure ess
     _ -> error $ "non-reachable pattern: t = "++show t
                          ++" ; unfoldApp t = "++show(unfoldApp t)
 
