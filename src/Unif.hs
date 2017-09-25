@@ -97,7 +97,6 @@ ustep ((t1, t2):es, s) =
      tG : ts2 = unfoldApp t2; xG = nm2tm tG; bs2 = unB<$>ts2; len2 = length ts2
      xs = [x1 | (x1,x2)<-zip ts1 ts2, x1==x2]
      zs = [x1 | x1 <- ts1, x2 <- ts2, x1==x2]
-
      cantUnify whymsg = fail $ "cannot unify " ++ show (t1,t2)
                             ++ " because " ++ whymsg
 
