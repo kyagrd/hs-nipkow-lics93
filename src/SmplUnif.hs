@@ -20,6 +20,8 @@ import           Unbound.LocallyNameless
 -- import           Debug.Trace
 trace = flip const
 
+-- TODO Sig is basically an environment. should we abstract it as reader monad?
+
 type Sig = Map Nm VarType
 data VarType = Cnst | Flex deriving (Eq,Ord,Show,Read)
 
@@ -102,7 +104,7 @@ ustep (sig, (t1, t2):es, s) =
      cantUnify whymsg = fail $ "cannot unify " ++ show (t1,t2)
                             ++ " because " ++ whymsg
 
-unB (V x) = x -- must not be in sig but not checking here
+unB (V x) = x -- x must not be in sig but not really checking here yet
 
 occ s x t = occurs x <$> expand s t
 
