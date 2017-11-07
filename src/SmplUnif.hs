@@ -20,7 +20,15 @@ import           Unbound.LocallyNameless
 -- import           Debug.Trace
 trace = flip const
 
--- TODO Sig is basically an environment. should we abstract it as reader monad?
+-- Sig is a quantifier prefix in the form of
+-- c1...cn, exists X1....Xn, forall b1...bn
+-- where c1...cn are global constants and b1...bn are some bound variables
+-- In the mapping of Sig we only store c1...cn and X1...Xn and bound vars
+-- are ignored. That is, when it is not found in the sig it is considered
+-- as a bound variable. Global constants are given in the beginning and
+-- do not change. Flexible logic variables X1...Xn are given in the beginning
+-- but can be added during unification calculation as we need to introduce
+-- more fresh logic variables
 
 type Sig = Map Nm VarType
 data VarType = Cnst | Flex deriving (Eq,Ord,Show,Read)
