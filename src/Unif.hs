@@ -93,8 +93,8 @@ ustep ((t1, t2):es, s) =
       | xF/=xG               -> cantUnify $ show xF++" /= "++show xG
       | otherwise            -> cantUnify "their arguments differ"
   where
-     tF : ts1 = unfoldApp t1; xF = nm2tm tF; bs1 = unB<$>ts1; len1 = length ts1
-     tG : ts2 = unfoldApp t2; xG = nm2tm tG; bs2 = unB<$>ts2; len2 = length ts2
+     tF : ts1 = unfoldApp t1; xF = tm2nm tF; bs1 = unB<$>ts1; len1 = length ts1
+     tG : ts2 = unfoldApp t2; xG = tm2nm tG; bs2 = unB<$>ts2; len2 = length ts2
      xs = [x1 | (x1,x2)<-zip ts1 ts2, x1==x2]
      zs = [x1 | x1 <- ts1, x2 <- ts2, x1==x2]
      cantUnify whymsg = fail $ "cannot unify " ++ show (t1,t2)
@@ -145,10 +145,10 @@ redapps (Lam b) (t:ts) = do (x,tb) <- unbind b
                             redapps (subst x t tb) ts
 redapps t       ts     = return $ appMany t ts
 
-nm2tm (V x) = x
-nm2tm (B x) = x
-nm2tm (C x) = x
-nm2tm t     = error $ show t ++ " is neither variable nor constant"
+tm2nm (V x) = x
+tm2nm (B x) = x
+tm2nm (C x) = x
+tm2nm t     = error $ show t ++ " is neither variable nor constant"
 
 unfoldApp = reverse . unstackApp
 

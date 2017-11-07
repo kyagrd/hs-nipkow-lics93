@@ -27,11 +27,12 @@ data VarType = Cnst | Flex deriving (Eq,Ord,Show,Read)
 
 emptyMap = M.empty
 
-expand, expand' :: Fresh m => Map Nm Tm -> Tm -> m Tm
+expand :: Fresh m => Map Nm Tm -> Tm -> m Tm
 expand s v@(V x) = case M.lookup x s of { Nothing -> pure v; Just u -> expand s u }
 expand s (App t1 t2) = App <$> expand s t1 <*> expand s t2
 expand s (Lam b) = do { (x,t) <- unbind b; lam x <$> expand s t }
 
+expand' :: Fresh m => Map Nm Tm -> Tm -> m Tm
 expand' s v@(V x) = case M.lookup x s of { Nothing -> pure v; Just u -> expand' s u }
 expand' s (App t1 t2) = do { t1' <- expand' s t1; t2' <- expand' s t2; redapps t1' [t2'] }
 expand' s (Lam b) = do { (x,t) <- unbind b; lam x <$> expand' s t }
@@ -68,18 +69,19 @@ ustep (sig, (t1, t2):es, s) =
   case (tF, tG) of
     (V xF, V xG)
     -- flexflex
-      | flex sig xF && flex sig xG ->
-        if -- flexflex1
-           | xF == xG -> if len1/=len2 then cantUnify "their arguments differ"
-                                       else do h <- fresh (s2n "H")
-                                               let sig' = M.insert h Flex sig
-                                               (xF, hnf bs1 (V h) xs) .+ pure(sig', es, s)
-           -- flexflex2
-           | subset bs1 bs2 -> (xG, hnf bs2 tF ts1) .+ pure(sig,es, s)
-           | subset bs2 bs1 -> (xF, hnf bs1 tG ts2) .+ pure(sig,es, s)
-           | otherwise -> do h <- fresh (s2n "H")
-                             let sig' = M.insert h Flex sig
-                             (xF, hnf bs1 (V h) zs) .+ (xG, hnf bs2 (V h) zs) .+ pure(sig', es, s)
+      | flex sig xF && flex sig xG -> if -- multy way if
+        -- flexflex1
+        | xF == xG -> if len1/=len2 then cantUnify "their arguments differ"
+                      else do h <- fresh (s2n "H")
+                              let sig' = M.insert h Flex sig
+                              (xF, hnf bs1 (V h) xs) .+ pure(sig', es, s)
+        -- flexflex2
+        | subset bs1 bs2 -> (xG, hnf bs2 tF ts1) .+ pure(sig, es, s)
+        | subset bs2 bs1 -> (xF, hnf bs1 tG ts2) .+ pure(sig, es, s)
+        | otherwise ->
+          do h <- fresh (s2n "H")
+             let sig' = M.insert h Flex sig
+             (xF, hnf bs1 (V h) zs) .+ (xG, hnf bs2 (V h) zs) .+ pure(sig',es,s)
     -- flexrigid
       | flex sig xF -> trace ("flexrigid "++show((t1,t2):es)) $
                 do xF't2 <- occ s xF t2
@@ -120,17 +122,14 @@ proj vs ess@(sig,es,s) t =
   case unfoldApp t of
     [Lam b]         -> do { (x,tb) <- unbind b; proj' (x:vs) ess tb }
     V x : ts
-      -- global const
-      | cnst sig x -> foldlM (proj' vs) ess ts
-      -- logic var
-      | flex sig x -> let ys = unB <$> ts
+      | cnst sig x -> foldlM (proj' vs) ess ts   -- global const
+      | flex sig x -> let ys = unB <$> ts        -- logic var
                           zs = [V y | y<-ys, y `elem` vs]
                        in if subset ys vs then pure ess
-                                          else do h <- fresh (s2n "H")
-                                                  let sig' = M.insert h Flex sig
-                                                  (x, hnf ys (V h) zs) .+ pure(sig',es,s)
-      -- bound var
-      | x `elem` vs -> foldlM (proj' vs) ess ts
+                          else do h <- fresh (s2n "H")
+                                  let sig' = M.insert h Flex sig
+                                  (x, hnf ys (V h) zs) .+ pure(sig',es,s)
+      | x `elem` vs -> foldlM (proj' vs) ess ts  -- bound var
       | otherwise   -> fail $ "unbound rigid variable "++ show x
     _ -> error $ "non-reachable pattern: t = "++show t
                          ++" ; unfoldApp t = "++show(unfoldApp t)
